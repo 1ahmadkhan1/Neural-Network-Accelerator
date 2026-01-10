@@ -21,25 +21,4 @@ Training is done **offline in Python** (supervised learning). After convergence,
 **Outputs:**
 - `trained_dnn.npz` to store multiple NumPy arrays in a single, compressed archive
 
-```mermaid
-%%{init: {"theme":"base","flowchart":{"nodeSpacing":90,"rankSpacing":110,"curve":"basis"},"themeVariables":{"fontSize":"22px"}}}%%
-flowchart TB
-
-  classDef node fill:#fff7d6,stroke:#111111,stroke-width:2px,color:#111111;
-  classDef io   fill:#e8f3ff,stroke:#111111,stroke-width:2px,color:#111111;
-  classDef bus  fill:#f2f2f2,stroke:#111111,stroke-width:2px,color:#111111;
-  classDef tag  fill:#eadcff,stroke:#111111,stroke-width:2px,color:#111111;
-
-  TD["Training Data (MNIST)"]:::io --> PY["training_dnn/<br/>train_model.py"]:::node
-  PY --> P["Learned Params<br/>(weights + biases)"]:::tag
-  P --> EX["export_weights.py<br/>(pack -> binary layout)"]:::node
-  EX --> BIN["nn.bin"]:::tag
-
-  BIN --> MON["FPGA Monitor Program<br/>Load file into memory"]:::bus
-  MON --> SDR["SDRAM<br/>nn.bin @ 0x08000000"]:::bus
-
-  IMG["test_xx.bin<br/>@ 0x08800000"]:::tag --> SDR
-
-  SDR --> C["Nios II C Inference<br/>run_nn.c"]:::node
-  C --> HEX["7-seg PIO<br/>(predicted digit)"]:::io
 
