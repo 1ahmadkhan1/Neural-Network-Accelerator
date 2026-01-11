@@ -18,8 +18,8 @@ class DNN(chainer.Chain):
     def __init__(self):
         super(DNN, self).__init__()
         with self.init_scope():
-            self.l1 = L.Linear(None, 1000)
-            self.l2 = L.Linear(None, 1000) 
+            self.l1 = L.Linear(None, 16)
+            self.l2 = L.Linear(None, 16) 
             self.l3 = L.Linear(None, 10)
     def forward(self, x):
         o1 = F.relu(self.l1(x))

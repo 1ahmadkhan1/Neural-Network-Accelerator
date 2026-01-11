@@ -142,7 +142,7 @@ refer to the applicable agreement for further details.
 		(text "we_n" (rect 117 315 258 640)(font "Arial" (color 0 0 0)))
 		(text "sdram_clk" (rect 193 83 440 179)(font "Arial" (color 128 0 0)(font_size 9)))
 		(text "clk" (rect 177 107 372 224)(font "Arial" (color 0 0 0)))
-		(text " dnn_accel_system " (rect 220 336 548 682)(font "Arial" ))
+		(text " system " (rect 269 336 586 682)(font "Arial" ))
 		(line (pt 112 32)(pt 192 32)(line_width 1))
 		(line (pt 192 32)(pt 192 336)(line_width 1))
 		(line (pt 112 336)(pt 192 336)(line_width 1))

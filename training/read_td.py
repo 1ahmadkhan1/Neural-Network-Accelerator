@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 # Load the .npz file
-data = np.load('training/trained_dnn.npz')
+data = np.load('trained_dnn.npz')
 
 # Iterate over each array and save it with a descriptive name
 for key in data.files:
