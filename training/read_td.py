@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 # Load the .npz file
-data = np.load('trained_dnn.npz')
+data = np.load('training/trained_dnn.npz')
 
 # Iterate over each array and save it with a descriptive name
 for key in data.files:
@@ -23,6 +23,6 @@ for key in data.files:
     
     # Save to CSV with the descriptive name
     csv_filename = f"{name}.csv"
-    df.to_csv(csv_filename, index=False)
+    df.to_csv(csv_filename, index=False, header=False)
 
 print("All data has been exported to descriptive CSV files.")

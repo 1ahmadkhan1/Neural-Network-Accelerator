@@ -1,5 +1,13 @@
 # Deep Neural Network Accelerator on an FPGA
 
+## Contents
+- [Objectives](#objectives)
+- [Creating a Nios II System](#creating-a-nios-ii-system)
+- [Model Training](#model-training)
+- [Outputs](#outputs)
+- [Next Steps](#next-steps)
+
+
 ## Objectives
 - Train a neural network to identify numbers from the MNIST dataset
 - Use the weights and biases that were accurately generated to run the model on the softcore of the FPGA
