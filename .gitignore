@@ -1,0 +1,41 @@
+# Quartus build/generated folders
+**/db/
+**/incremental_db/
+**/output_files/
+**/greybox_tmp/
+**/simulation/
+
+# Quartus generated files
+*.rpt
+*.summary
+*.smsg
+*.qmsg
+*.done
+*.pin
+*.sof
+*.pof
+*.cdf
+*.jdi
+*.sld
+*.rdb
+*.ddb
+*.cdb
+*.hdb
+*.ammdb
+*.logdb
+*.kpt
+*.tdb
+*.hif
+*.bak
+
+# Nios II build outputs
+**/obj/
+*.elf
+*.map
+*.objdump
+*.o
+*.d
+*.a
+
+# Eclipse workspace metadata
+.metadata/

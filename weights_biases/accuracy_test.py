@@ -13,7 +13,7 @@ def read_intel_hex_q2_14(filename):
                     w = (hi << 8) | lo
                     if w & 0x8000:
                         w -= 0x10000
-                    words.append(w / 16384.0)
+                    words.append(w / 256.0)
     return words
 
 # Compare with your original floats
