@@ -139,7 +139,7 @@ ACDS_VERSION := 18.1
 # Define path to the application ELF. 
 # It may be used by the makefile fragments so is defined before including them. 
 # 
-ELF := Hello_World.elf
+ELF := Basic_Inference.elf
 
 # Paths to C, C++, and assembly source files.
 C_SRCS := hello_world_small.c
@@ -177,7 +177,7 @@ CRT0 :=
 SYS_LIB :=
 
 # Define path to the root of the BSP.
-BSP_ROOT_DIR := ../Hello_World_bsp/
+BSP_ROOT_DIR := ../Basic_Inference_bsp/
 
 # List of application specific include directories, library directories and library names
 APP_INCLUDE_DIRS :=

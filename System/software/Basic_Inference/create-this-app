@@ -3,9 +3,9 @@
 # This script creates the hello_world_small application in this directory.
 
 
-BSP_DIR=../Hello_World_bsp
+BSP_DIR=../Basic_Inference_bsp
 QUARTUS_PROJECT_DIR=../../
-NIOS2_APP_GEN_ARGS="--elf-name Hello_World.elf --set APP_CFLAGS_OPTIMIZATION -Os --set OBJDUMP_INCLUDE_SOURCE 1 --src-files hello_world_small.c"
+NIOS2_APP_GEN_ARGS="--elf-name Basic_Inference.elf --set APP_CFLAGS_OPTIMIZATION -Os --set OBJDUMP_INCLUDE_SOURCE 1 --src-files hello_world_small.c"
 
 
 # First, check to see if $SOPC_KIT_NIOS2 environmental variable is set.
