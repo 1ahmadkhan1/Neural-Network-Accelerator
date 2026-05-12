@@ -1,10 +1,14 @@
+# This script tests the accuracy of the NIOSII network on the MNIST test set.
+# It loads the weights and biases from the hex files, runs inference on the test images,
+# and computes the overall accuracy.
+
 import gzip
 import math
 import struct
 from pathlib import Path
 
 # ------------------------------------------------------------
-#  Q8.8 constants & conversion (exactly like hello_world_small.c)
+#  Q8.8 constants & conversion
 # ------------------------------------------------------------
 Q_FRAC = 8
 Q_SCALE = 1 << Q_FRAC  # 256
@@ -76,7 +80,7 @@ def parse_intel_hex(filename):
 
 
 # ------------------------------------------------------------
-#  Layer functions (mirror your C code)
+#  Layer functions (mirror C code)
 # ------------------------------------------------------------
 def dense_relu_from_memory(input_q8, w_q8, b_q8, in_size, out_size):
     out = []

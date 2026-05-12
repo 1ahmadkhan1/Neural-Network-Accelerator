@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 # ------------------------------------------------------------
-#  Fixed-point constants (identical to hello_world_small.c)
+#  Fixed-point constants
 # ------------------------------------------------------------
 Q_FRAC = 8
 Q_SCALE = 1 << Q_FRAC  # 256

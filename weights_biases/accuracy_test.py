@@ -1,21 +1,46 @@
-def read_intel_hex_q2_14(filename):
+def read_mif_q8_8(filename):
     words = []
-    with open(filename) as f:
+    in_content = False
+
+    with open(filename, "r") as f:
         for line in f:
-            if line.startswith(':'):
-                byte_count = int(line[1:3], 16)
-                if byte_count == 0:  # EOF record
-                    break
-                data_str = line[9:9+byte_count*2]
-                for i in range(0, len(data_str), 4):
-                    lo = int(data_str[i:i+2], 16)
-                    hi = int(data_str[i+2:i+4], 16)
-                    w = (hi << 8) | lo
-                    if w & 0x8000:
-                        w -= 0x10000
-                    words.append(w / 256.0)
+            line = line.strip()
+
+            # Remove comments
+            if "--" in line:
+                line = line.split("--")[0].strip()
+
+            if not line:
+                continue
+
+            if line.upper() == "CONTENT BEGIN":
+                in_content = True
+                continue
+
+            if line.upper() == "END;":
+                break
+
+            if in_content and ":" in line:
+                # Example line:
+                # 000A : FF80;
+                parts = line.split(":")
+                data_part = parts[1].strip().rstrip(";").strip()
+
+                try:
+                    word = int(data_part, 16)
+                except ValueError:
+                    continue
+
+                # Interpret as signed 16-bit two's complement
+                if word & 0x8000:
+                    word -= 0x10000
+
+                # Q8.8 dequantization
+                words.append(word / 256.0)
+
     return words
 
-# Compare with your original floats
-floats = read_intel_hex_q2_14("weights_biases/w1.hex")
+
+# Compare with original floats
+floats = read_mif_q8_8("weights_biases/b1.mif")
 print(floats[:16])
