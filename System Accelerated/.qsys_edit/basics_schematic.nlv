@@ -1,0 +1,32 @@
+# # File gsaved with Nlview version 6.3.8  2013-12-19 bk=1.2992 VDI=34 GEI=35
+# 
+preplace inst basics.b3 -pg 1 -lvl 3 -y 410
+preplace inst basics.sev_seg -pg 1 -lvl 3 -y 950
+preplace inst basics.w1 -pg 1 -lvl 3 -y 680
+preplace inst basics.nios2_cpu.reset_bridge -pg 1
+preplace inst basics.nios2_cpu.clock_bridge -pg 1
+preplace inst basics.input_layer -pg 1 -lvl 3 -y 500
+preplace inst basics.w2 -pg 1 -lvl 3 -y 770
+preplace inst basics.w3 -pg 1 -lvl 3 -y 860
+preplace inst basics.leds -pg 1 -lvl 3 -y 1170
+preplace inst basics.onchip_memory -pg 1 -lvl 3 -y 120
+preplace inst basics.jtag_uart -pg 1 -lvl 3 -y 210
+preplace inst basics.switches -pg 1 -lvl 3 -y 1060
+preplace inst basics -pg 1 -lvl 1 -y 40 -regy -20
+preplace inst basics.sysid_qsys_0 -pg 1 -lvl 3 -y 590
+preplace inst basics.nios2_cpu.cpu -pg 1
+preplace inst basics.nios2_cpu -pg 1 -lvl 2 -y 210
+preplace inst basics.clk_0 -pg 1 -lvl 1 -y 140
+preplace inst basics.b1 -pg 1 -lvl 3 -y 30
+preplace inst basics.b2 -pg 1 -lvl 3 -y 320
+preplace netloc EXPORT<net_container>basics</net_container>(SLAVE)basics.clk,(SLAVE)clk_0.clk_in) 1 0 1 NJ
+preplace netloc INTERCONNECT<net_container>basics</net_container>(SLAVE)jtag_uart.reset,(MASTER)nios2_cpu.debug_reset_request,(MASTER)clk_0.clk_reset,(SLAVE)nios2_cpu.reset,(SLAVE)b2.reset1,(SLAVE)sev_seg.reset,(SLAVE)input_layer.reset1,(SLAVE)b3.reset1,(SLAVE)leds.reset,(SLAVE)w1.reset1,(SLAVE)onchip_memory.reset1,(SLAVE)b1.reset1,(SLAVE)w3.reset1,(SLAVE)sysid_qsys_0.reset,(SLAVE)switches.reset,(SLAVE)w2.reset1) 1 1 2 260 170 680
+preplace netloc INTERCONNECT<net_container>basics</net_container>(SLAVE)sysid_qsys_0.control_slave,(SLAVE)onchip_memory.s1,(SLAVE)input_layer.s1,(SLAVE)switches.s1,(SLAVE)b1.s1,(SLAVE)b2.s1,(MASTER)nios2_cpu.data_master,(MASTER)nios2_cpu.instruction_master,(SLAVE)w1.s1,(SLAVE)leds.s1,(SLAVE)w2.s1,(SLAVE)nios2_cpu.debug_mem_slave,(SLAVE)b3.s1,(SLAVE)sev_seg.s1,(SLAVE)jtag_uart.avalon_jtag_slave,(SLAVE)w3.s1) 1 1 2 280 1220 700
+preplace netloc EXPORT<net_container>basics</net_container>(SLAVE)basics.switches,(SLAVE)switches.external_connection) 1 0 3 NJ 1090 NJ 1090 NJ
+preplace netloc EXPORT<net_container>basics</net_container>(SLAVE)sev_seg.external_connection,(SLAVE)basics.sev_seg) 1 0 3 NJ 980 NJ 980 NJ
+preplace netloc EXPORT<net_container>basics</net_container>(SLAVE)basics.reset,(SLAVE)clk_0.clk_in_reset) 1 0 1 NJ
+preplace netloc EXPORT<net_container>basics</net_container>(SLAVE)leds.external_connection,(SLAVE)basics.leds) 1 0 3 NJ 1200 NJ 1200 NJ
+preplace netloc POINT_TO_POINT<net_container>basics</net_container>(MASTER)nios2_cpu.irq,(SLAVE)jtag_uart.irq) 1 2 1 720
+preplace netloc FAN_OUT<net_container>basics</net_container>(SLAVE)input_layer.clk1,(SLAVE)w1.clk1,(SLAVE)b2.clk1,(SLAVE)b1.clk1,(SLAVE)switches.clk,(SLAVE)sev_seg.clk,(SLAVE)sysid_qsys_0.clk,(SLAVE)leds.clk,(SLAVE)jtag_uart.clk,(SLAVE)onchip_memory.clk1,(MASTER)clk_0.clk,(SLAVE)w3.clk1,(SLAVE)w2.clk1,(SLAVE)b3.clk1,(SLAVE)nios2_cpu.clk) 1 1 2 280 150 660
+levelinfo -pg 1 0 60 930
+levelinfo -hier basics 70 100 430 770 920
