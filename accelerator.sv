@@ -1,6 +1,6 @@
-module accelerator (
-    input  logic        clk,
-    input  logic        reset,
+module acc (
+    input  logic        clk_clk,
+    input  logic        reset_reset,
 
     // CPU register interface
     input  logic [4:0]  s1_address,     // 32 addresses for 32 possible registers
@@ -23,6 +23,12 @@ module accelerator (
     output logic [31:0] acc_master_writedata,
     output logic [3:0]  acc_master_byteenable
 );
+
+    logic clk;
+    logic reset;
+
+    assign clk   = clk_clk;
+    assign reset = reset_reset;
 
     // --------------------------------------------------- //
     //  Assigning internal registers for the accelerator   //
@@ -52,9 +58,7 @@ module accelerator (
         end
         else if (s1_write) begin
             case(s1_address)
-                5'd0: begin
-                    if (s1_writedata[0]) start <= 1'b1;
-                end
+                5'd0: start        <= s1_writedata[0];
                 5'd1: input_base   <= s1_writedata;
                 5'd2: weights_base <= s1_writedata;
                 5'd3: bias_base    <= s1_writedata;
@@ -134,7 +138,6 @@ module accelerator (
                     // wait for start signal
                     if (start) begin
                         state <= outer_loop_st;
-                        start <= 1'b0; // Clear start signal to prevent re-triggering
                     end else begin
                         state <= idle_st;
                         neuron_i <= 32'b0;
@@ -241,7 +244,7 @@ module accelerator (
 
                 saturate_st: begin
                     // Saturate neuron activation so it fits within our range
-                    if (outpute_temp > q_max) begin
+                    if (output_temp > q_max) begin
                         neuron_activation <= q_max;
                     end else if (output_temp < q_min) begin
                         neuron_activation <= q_min;
@@ -278,7 +281,6 @@ module accelerator (
                 end
 
                 done_out_st: begin
-                    done <= 1'b1;           // Signal that the accelerator is done processing all neurons
                     state <= idle_st;
                 end
 
