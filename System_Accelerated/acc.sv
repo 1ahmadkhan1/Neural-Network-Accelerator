@@ -77,9 +77,9 @@ module acc (
     // --------------------------------------------------- //
 
     // Parameters for  arithmetic
-    parameter [15:0] q_fractional_bits =  5'd8;       // Number of fractional bits in Q8.8
-    parameter [15:0] q_max             =  16'sd32767; // Maximum value for saturation
-    parameter [15:0] q_min             = -16'sd32768; // Minimum value for saturation
+    localparam signed [31:0] q_max = 32'sd32767;  // Maximum value for saturation
+    localparam signed [31:0] q_min = -32'sd32768; // Minimum value for saturation
+    localparam int q_fractional_bits = 8;         // Number of fractional bits in Q8.8
 
     // Defining local state encodings
     localparam [4:0] idle_st         = 5'b0_0000;
@@ -166,10 +166,10 @@ module acc (
                         // Accumulation is the sign-extended bias to 64 bits and arithmatic left shift to convert Q16.16 format
                         if (acc_master_address[1] == 1'b0) begin
                             bias <= acc_master_readdata[15:0];
-                            accumulation <= $signed(acc_master_readdata[15:0]) <<< q_fractional_bits;
+                            accumulation <= $signed({{48{acc_master_readdata[15]}}, acc_master_readdata[15:0]}) <<< q_fractional_bits;
                         end else begin
                             bias <= acc_master_readdata[31:16];
-                            accumulation <= $signed(acc_master_readdata[31:16]) <<< q_fractional_bits;
+                            accumulation <= $signed({{48{acc_master_readdata[31]}}, acc_master_readdata[31:16]}) <<< q_fractional_bits;
                         end
                         state <= inner_loop_st;
                         output_address <= acc_master_address; // Store the bias base address for the output of the current neuron
@@ -244,9 +244,9 @@ module acc (
                 saturate_st: begin
                     // Saturate neuron activation so it fits within our range
                     if (output_temp > q_max) begin
-                        neuron_activation <= q_max;
+                        neuron_activation <= 16'sd32767;
                     end else if (output_temp < q_min) begin
-                        neuron_activation <= q_min;
+                        neuron_activation <= -16'sd32768; // Saturate to minimum value
                     end else begin
                         neuron_activation <= output_temp;
                     end
