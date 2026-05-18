@@ -2,8 +2,8 @@
 <sch:Settings xmlns:sch="http://www.altera.com/embeddedsw/bsp/schema">
         <BspType>hal</BspType>
         <BspVersion>default</BspVersion>
-        <BspGeneratedTimeStamp>May 18, 2026 12:57:51 AM</BspGeneratedTimeStamp>
-        <BspGeneratedUnixTimeStamp>1779055071278</BspGeneratedUnixTimeStamp>
+        <BspGeneratedTimeStamp>18-May-2026 8:08:11 PM</BspGeneratedTimeStamp>
+        <BspGeneratedUnixTimeStamp>1779124091684</BspGeneratedUnixTimeStamp>
         <BspGeneratedLocation>C:\Users\ahmad\PersonalProjects\NeuralNetwork\System_Accelerated\software\Accelerated_Inference_bsp</BspGeneratedLocation>
         <BspSettingsFile>settings.bsp</BspSettingsFile>
         <SopcDesignFile>..\..\basics.sopcinfo</SopcDesignFile>

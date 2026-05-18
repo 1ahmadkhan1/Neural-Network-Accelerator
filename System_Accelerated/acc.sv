@@ -117,10 +117,15 @@ module acc (
 
     always_ff @(posedge clk) begin
         if (reset) begin
+            output_address <= 32'b0;
             neuron_i <= 32'b0;
             input_j <= 32'b0;
             bias <= 16'b0;
             accumulation <= 64'b0;
+            output_temp <= 32'b0;
+            neuron_activation <= 16'b0;
+            x <= 32'b0;
+            w <= 32'b0;
             state <= idle_st;
             acc_master_read <= 1'b0;
             acc_master_write <= 1'b0;
@@ -138,13 +143,23 @@ module acc (
                         state <= outer_loop_st;
                     end else begin
                         state <= idle_st;
+                        output_address <= 32'b0;
                         neuron_i <= 32'b0;
                         input_j <= 32'b0;
                         bias <= 16'b0;
                         accumulation <= 64'b0;
+                        output_temp <= 32'b0;
+                        neuron_activation <= 16'b0;
                         x <= 32'b0;
                         w <= 32'b0;
                         state <= idle_st;
+                        acc_master_read <= 1'b0;
+                        acc_master_write <= 1'b0;
+                        acc_master_address <= 32'b0;
+                        acc_master_writedata <= 32'b0;
+                        acc_master_byteenable <= 4'b1111;
+                        output_address <= 32'b0;
+                        
                     end 
                 end
 
@@ -161,6 +176,13 @@ module acc (
                 end
 
                 read_1_st: begin
+                                        
+                    if (acc_master_waitrequest) begin
+                        acc_master_read <= 1'b1;   // keep request alive
+                    end else begin
+                        acc_master_read <= 1'b0;   // request accepted, now wait for data
+                    end
+                    
                     if(acc_master_readdatavalid) begin
                         // Capture the correct bias value for the current neuron
                         // Accumulation is the sign-extended bias to 64 bits and arithmatic left shift to convert Q16.16 format
@@ -189,6 +211,13 @@ module acc (
                 end
 
                 read_2_st: begin
+                                        
+                    if (acc_master_waitrequest) begin
+                        acc_master_read <= 1'b1;   // keep request alive
+                    end else begin
+                        acc_master_read <= 1'b0;   // request accepted, now wait for data
+                    end
+
                     if (acc_master_readdatavalid) begin
                         // Capture the correct input value
                         if (acc_master_address[1] == 1'b0) begin
@@ -206,6 +235,13 @@ module acc (
                 end
 
                 read_3_st: begin
+
+                    if (acc_master_waitrequest) begin
+                        acc_master_read <= 1'b1;   // keep request alive
+                    end else begin
+                        acc_master_read <= 1'b0;   // request accepted, now wait for data
+                    end
+
                     if (acc_master_readdatavalid) begin
                         // Capture the correct weight value
                         if (acc_master_address[1] == 1'b0) begin
@@ -238,7 +274,6 @@ module acc (
                         output_temp <= -((-accumulation + (64'sd1 <<< (q_fractional_bits - 1))) >>> q_fractional_bits); // Add 0.5 for rounding and shift then negate again
                     end
                     state <= saturate_st;
-                    acc_master_write <= 1'b0; // Deassert write signal just in case
                 end
 
                 saturate_st: begin

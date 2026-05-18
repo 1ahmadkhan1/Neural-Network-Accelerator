@@ -2,7 +2,7 @@ set_global_assignment -entity "basics" -library "basics" -name IP_TOOL_NAME "Qsy
 set_global_assignment -entity "basics" -library "basics" -name IP_TOOL_VERSION "18.1"
 set_global_assignment -entity "basics" -library "basics" -name IP_TOOL_ENV "Qsys"
 set_global_assignment -library "basics" -name SOPCINFO_FILE [file join $::quartus(qip_path) "../../basics.sopcinfo"]
-set_global_assignment -entity "basics" -library "basics" -name SLD_INFO "QSYS_NAME basics HAS_SOPCINFO 1 GENERATION_ID 1779052781"
+set_global_assignment -entity "basics" -library "basics" -name SLD_INFO "QSYS_NAME basics HAS_SOPCINFO 1 GENERATION_ID 1779123186"
 set_global_assignment -library "basics" -name MISC_FILE [file join $::quartus(qip_path) "../basics.cmp"]
 set_global_assignment -library "basics" -name SLD_FILE [file join $::quartus(qip_path) "basics.regmap"]
 set_global_assignment -library "basics" -name SLD_FILE [file join $::quartus(qip_path) "basics.debuginfo"]
@@ -16,7 +16,7 @@ set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_DISP
 set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_REPORT_HIERARCHY "On"
 set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_INTERNAL "Off"
 set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_VERSION "MS4w"
-set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_PARAMETER "QVVUT19HRU5FUkFUSU9OX0lE::MTc3OTA1Mjc4MQ==::QXV0byBHRU5FUkFUSU9OX0lE"
+set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_PARAMETER "QVVUT19HRU5FUkFUSU9OX0lE::MTc3OTEyMzE4Ng==::QXV0byBHRU5FUkFUSU9OX0lE"
 set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_PARAMETER "QVVUT19ERVZJQ0VfRkFNSUxZ::Q3ljbG9uZSBW::QXV0byBERVZJQ0VfRkFNSUxZ"
 set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_PARAMETER "QVVUT19ERVZJQ0U=::NUNTRU1BNUYzMUM2::QXV0byBERVZJQ0U="
 set_global_assignment -entity "basics" -library "basics" -name IP_COMPONENT_PARAMETER "QVVUT19ERVZJQ0VfU1BFRURHUkFERQ==::Ng==::QXV0byBERVZJQ0VfU1BFRURHUkFERQ=="
