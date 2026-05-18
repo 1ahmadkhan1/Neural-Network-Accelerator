@@ -23,7 +23,8 @@
 #define OUTPUT_SIZE  10
 
 /*
- * Accelerator register map:
+ * Your accelerator register map:
+ *
  * reg 0: start
  * reg 1: input_base
  * reg 2: weights_base
@@ -32,8 +33,7 @@
  * reg 5: output_size
  * reg 6: relu_enable
  *
- * s1_readdata always returns {31'b0, done} where done = state[4]
- * (combinatorial; no register to clear).
+ * s1_readdata returns done in bit 0.
  */
 #define ACC_REG_START         0
 #define ACC_REG_INPUT_BASE    1
@@ -42,6 +42,7 @@
 #define ACC_REG_INPUT_SIZE    4
 #define ACC_REG_OUTPUT_SIZE   5
 #define ACC_REG_RELU_ENABLE   6
+
 
 #define ACC_BASE ACC_0_BASE
 
@@ -115,13 +116,13 @@ static void print_q8_8_vector(const char *name, uint32_t base, int size)
 static void accelerator_wait_done(void)
 {
     /*
-     * done is bit 0 of any IORD from ACC_BASE.
-     * It is combinatorial (state[4]) so it goes high as soon
-     * as the FSM enters done_out_st, and stays high until
-     * the FSM leaves wait_start_st.
+     * Your HDL returns done in bit 0 of s1_readdata.
+     * Since s1_readdata ignores address, any IORD from ACC_BASE works.
      */
     while ((IORD(ACC_BASE, 0) & 0x1) == 0) {
-        /* busy wait */
+        /*
+         * Busy wait.
+         */
     }
 }
 
@@ -135,13 +136,12 @@ static void accelerator_run_layer(
 )
 {
     /*
-     * Ensure start is low before reconfiguring.
-     * The FSM must be in idle_st (state[4]=0) before we change parameters.
+     * Make sure start is low before configuring the layer.
      */
     IOWR(ACC_BASE, ACC_REG_START, 0);
 
     /*
-     * Configure all layer parameters.
+     * Configure accelerator registers.
      */
     IOWR(ACC_BASE, ACC_REG_INPUT_BASE,   input_base);
     IOWR(ACC_BASE, ACC_REG_WEIGHTS_BASE, weights_base);
@@ -152,17 +152,17 @@ static void accelerator_run_layer(
 
     /*
      * Start the FSM.
+     *
+     * Since your done is encoded in state[4], keep start high while running.
+     * The FSM reaches done_out_st, done becomes 1, and software sees it.
      */
     IOWR(ACC_BASE, ACC_REG_START, 1);
 
-    /*
-     * Wait for the FSM to reach done_out_st (state[4]=1).
-     */
     accelerator_wait_done();
 
     /*
-     * Drop start so the FSM exits wait_start_st and returns to idle_st.
-     * This also clears the done flag (state[4] becomes 0).
+     * Drop start back to 0 so the FSM can return to idle / be ready
+     * for the next layer.
      */
     IOWR(ACC_BASE, ACC_REG_START, 0);
 }
@@ -173,11 +173,23 @@ int main(void)
 
     printf("Starting accelerated Nios II DNN inference using Q8.8...\n");
 
+    printf("B3_BASE from system.h = 0x%08x\n", B3_BASE);
+    printf("Testing CPU read from B3 before accelerator...\n");
+
+    volatile uint32_t b3_test_word = IORD_32DIRECT(B3_BASE, 0);
+
+    printf("B3 first word before accelerator = 0x%08x\n", b3_test_word);
+    printf("B3 CPU read test passed\n");
+
     /*
      * Layer 1:
-     * input_layer -> W1/B1 -> result stored back into B1
+     *
+     * input_layer -> W1/B1 -> result written back into B1
+     *
+     * Your FSM uses bias_base both as the bias input and output destination.
      */
     printf("Running layer 1...\n");
+
     accelerator_run_layer(
         INPUT_LAYER_BASE,
         W1_BASE,
@@ -189,9 +201,12 @@ int main(void)
 
     /*
      * Layer 2:
-     * B1 (now h1) -> W2/B2 -> result stored back into B2
+     *
+     * B1 now contains h1.
+     * B1 -> W2/B2 -> result written back into B2
      */
     printf("Running layer 2...\n");
+
     accelerator_run_layer(
         B1_BASE,
         W2_BASE,
@@ -203,10 +218,14 @@ int main(void)
 
     /*
      * Layer 3:
-     * B2 (now h2) -> W3/B3 -> logits stored back into B3
-     * Final layer: no ReLU.
+     *
+     * B2 now contains h2.
+     * B2 -> W3/B3 -> logits written back into B3
+     *
+     * Final layer has no ReLU.
      */
     printf("Running layer 3...\n");
+
     accelerator_run_layer(
         B2_BASE,
         W3_BASE,
@@ -217,20 +236,25 @@ int main(void)
     );
 
     /*
-     * Final logits are now in B3 memory.
+     * Final logits are stored in B3 memory.
      */
     print_q8_8_vector("Logits", B3_BASE, OUTPUT_SIZE);
 
     prediction = argmax_q8_8_from_memory(B3_BASE, OUTPUT_SIZE);
+
     printf("Predicted label: %d\n", prediction);
 
     write_prediction_to_outputs(prediction);
 
     while (1) {
-        /* Keep displaying prediction */
+        /*
+         * Keep displaying prediction.
+         */
         write_prediction_to_outputs(prediction);
 
-        /* Switch to LED sanity check */
+        /*
+         * Keep switch-to-LED sanity test alive.
+         */
         int sw = IORD(SWITCHES_BASE, 0);
         IOWR(LEDS_BASE, 0, sw);
     }
