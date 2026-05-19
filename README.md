@@ -1,9 +1,10 @@
-# Deep Neural Network Accelerator on an FPGA
 
 ## Contents
 - [Objectives](#objectives)
 - [Model Training](#model-training)
+- [Math behind Inference](#math-behind-inference)
 - [How the weights and biases were loaded onto memory](#how-the-weights-and-biases-were-loaded-onto-memory)
+- [Finite state machine used for hardware acceleration](#finite-state-machine-used-for-hardware-acceleration)
 
 
 ## Objectives
@@ -21,6 +22,17 @@ Supervised learning is done **offline in Python**. This allows us to run the for
 
 *Image from [3blue1brown](https://www.3blue1brown.com/?v=neural-networks) and this is the exact neural network we trained*
 
+## Math behind Inference
+
+<img width="2053" height="1320" alt="IMG_0364" src="https://github.com/user-attachments/assets/59530c0c-7d91-4026-9b9e-cd0a573eba09" />
+<img width="2046" height="876" alt="IMG_0365" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
+
+
+## Finite state machine used for hardware acceleration
+<p align="center">
+<img width="894" height="1072" alt="IMG_0366" src="https://github.com/user-attachments/assets/65179474-a174-4489-9655-73c2b9fc7d9d" />
+</p>
+
 ## How the weights and biases were loaded onto memory
 #### Q8.8 format
 After training, the learned weights and biases were originally stored as 32-bit floating-point values. Before loading them into FPGA memory, they were converted into **signed Q8.8 fixed-point format**.
@@ -29,7 +41,7 @@ After training, the learned weights and biases were originally stored as 32-bit 
 <br>
 This format gives:
 
-- enough precision [-128.0 , +127.99609375] for neural network weights, biases and all neuron activations 
+- enough precision [-128.0 , +127.99609375] for neural network weights, biases and all neuron activations
 - simple hardware implementation
 - compact 16-bit storage
 - faster multiply-and-accumulate operations
@@ -37,7 +49,7 @@ This format gives:
 
 
 #### The complete conversion process:
-<img width="1164" height="328" alt="image" src="https://github.com/user-attachments/assets/61890873-5001-470a-b94a-e93b0aa6cf07" />
+<img width="1704" height="171" alt="image" src="https://github.com/user-attachments/assets/b64e5cbb-d8db-466c-b9d2-7031a2d9d2f3" />
 
 
 ## Issues
