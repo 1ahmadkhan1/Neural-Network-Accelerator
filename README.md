@@ -35,14 +35,39 @@ The output layer does **not** apply ReLU. Instead, the predicted digit is the in
 
 ## Math Used During Inference
 
+<img width="1925" height="1215" alt="image" src="https://github.com/user-attachments/assets/758b487d-4cdd-45be-a70b-739629a09912" />
+
 For an input image `x` with 784 normalized pixel values, the network computes:
 
-```text
-h^(1) = ReLU(W1 x + b1)    where W1 is 16 x 784 and b1 is length 16
-h^(2) = ReLU(W2 h^(1) + b2) where W2 is 16 x 16  and b2 is length 16
-z      = W3 h^(2) + b3      where W3 is 10 x 16  and b3 is length 10
+## Neural Network Forward Pass
+
+<p align="left" >
+<b> h<sup>(1)</sup> = ReLU(W<sub>1</sub>x + b<sub>1</sub>) </b>
+</p>
+
+<p align="center">
+where W<sub>1</sub> is 16 × 784 and b<sub>1</sub> is length 16.
+</p>
+
+<p align="left">
+<b> h<sup>(2)</sup> = ReLU(W<sub>2</sub>h<sup>(1)</sup> + b<sub>2</sub>) </b>
+</p>
+
+<p align="center">
+where W<sub>2</sub> is 16 × 16 and b<sub>2</sub> is length 16.
+</p>
+
+<p align="left">
+<b> z = W<sub>3</sub>h<sup>(2)</sup> + b<sub>3</sub> </b>
+</p>
+
+<p align="center">
+where W<sub>3</sub> is 10 × 16 and b<sub>3</sub> is length 10.
+</p>
+
+<p align="center">
 prediction = argmax(z)
-```
+</p>
 
 For one neuron, the accelerator is really computing the same dense-layer equation over and over:
 
@@ -113,16 +138,15 @@ out = clamp(out, -32768, 32767)
 
 ### Layer-by-layer flow in this design
 
-- Layer 1 computes `h^(1)` from the 784 input pixels
-- Layer 2 computes `h^(2)` from the 16 outputs of layer 1
-- Layer 3 computes the 10 output logits from the 16 outputs of layer 2
+- Layer 1 computes h<sup>(1)</sup> from the 784 input pixels
+- Layer 2 computes h<sup>(2)</sup> from the 16 outputs of layer 1
+- Layer 3 computes z, 10 output logits from the 16 outputs of layer 2
 - The predicted digit is the index of the largest logit
 
 The software runs the accelerator once per layer. After each run, the new activations are written back into memory and reused as the next layer's input.
 
 #### Visual summary
 
-<img width="2053" height="1320" alt="Math summary 1" src="https://github.com/user-attachments/assets/59530c0c-7d91-4026-9b9e-cd0a573eba09" />
 <img width="2046" height="876" alt="Math summary 2" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
 
 
@@ -158,24 +182,9 @@ The FSM then walks through the input vector, weight matrix, and bias vector to p
 | `done_out_st` | Indicates that all output neurons for the current layer are complete. This is the completion state reached after the outer loop finishes. |
 | `wait_start_st` | Holds the FSM in a safe completed state until software lowers `start` back to `0`. This prevents the accelerator from immediately retriggering on the same start pulse. |
 
-### FSM flow in words
+### FSM flow
 
 The control flow is:
-
-```text
-idle
-  -> read current bias
-  -> for each input:
-       read input
-       read weight
-       multiply and accumulate
-  -> round / optional ReLU / saturate
-  -> write output activation
-  -> repeat for next neuron
-  -> signal done
-  -> wait for start to go low
-  -> return to idle
-```
 
 <p align="center">
 <img width="894" height="1072" alt="Accelerator FSM" src="https://github.com/user-attachments/assets/65179474-a174-4489-9655-73c2b9fc7d9d" />
@@ -185,7 +194,7 @@ idle
 
 - The accelerator reuses a single multiply-accumulate datapath instead of building many multipliers in parallel
 - Bias, input, and weight values are streamed from memory only when needed
-- The same FSM works for all three network layers because the CPU only changes the base addresses, sizes, and the `relu_enable` flag
+- The same FSM works for all three network layers because the CPU only changes the base addresses, sizes, and the relu_enable flag
 - Hidden layers run with ReLU enabled, and the final output layer runs with ReLU disabled
 
 
@@ -208,7 +217,7 @@ This format gives:
 
 #### The complete conversion process
 
-<img width="1164" height="328" alt="image" src="https://github.com/user-attachments/assets/61890873-5001-470a-b94a-e93b0aa6cf07" />
+<img width="2459" height="240" alt="image" src="https://github.com/user-attachments/assets/3ae24dc5-9ecf-48b5-9e53-abec264bd8e2" />
 
 
 ## Issues
