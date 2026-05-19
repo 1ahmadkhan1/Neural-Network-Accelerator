@@ -4,16 +4,17 @@
 - [Objectives](#objectives)
 - [Model Training](#model-training)
 - [Math Used During Inference](#math-used-during-inference)
+- [Accelerator Accuracy](#accelerator-accuracy)
 - [Accelerator FSM](#accelerator-fsm)
 - [How the weights and biases were loaded onto memory](#how-the-weights-and-biases-were-loaded-onto-memory)
 - [Issues](#issues)
 
 
 ## Objectives
-- Train a neural network to identify numbers from the MNIST dataset
-- Use the learned weights and biases to run inference on the FPGA softcore
-- Create a hardware module that accelerates the dot product needed for forward propagation
-- Measure the speedup gained by using the FPGA accelerator
+- Train a compact neural network that classifies handwritten MNIST digits
+- Convert the trained floating-point weights and biases into signed Q8.8 fixed-point data for FPGA memory
+- Design a custom hardware accelerator that performs dense-layer multiply-accumulate and optional ReLU for Nios II inference
+- Run end-to-end inference on the FPGA-oriented datapath while keeping high classification accuracy
 
 
 ## Model Training
@@ -148,6 +149,17 @@ The software runs the accelerator once per layer. After each run, the new activa
 #### Visual summary
 
 <img width="2046" height="876" alt="Math summary 2" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
+
+
+## Accelerator Accuracy
+
+Using the exported Q8.8 weights and biases together with the same fixed-point layer math used by the accelerator, the design correctly classified **9527 out of 10000** MNIST test images:
+
+```text
+Accuracy = 9527 / 10000 = 95.27%
+```
+
+This means the fixed-point accelerator path preserves almost all of the trained model's performance. The floating-point training log reached **95.31%** validation accuracy, so the Q8.8 implementation is only **0.04 percentage points lower**.
 
 
 ## Accelerator FSM
