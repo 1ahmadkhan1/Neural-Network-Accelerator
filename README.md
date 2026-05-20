@@ -76,6 +76,8 @@ For one neuron, the accelerator is really computing the same dense-layer equatio
 a_i = b_i + sum(x_j * w_i,j)   for j = 0 to N - 1
 ```
 
+<img width="2046" height="876" alt="Math summary 2" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
+
 Then:
 - if the layer is a hidden layer, `ReLU(a_i) = max(0, a_i)` is applied
 - if the layer is the output layer, the value is left unchanged and treated as a logit
@@ -145,10 +147,6 @@ out = clamp(out, -32768, 32767)
 - The predicted digit is the index of the largest logit
 
 The software runs the accelerator once per layer. After each run, the new activations are written back into memory and reused as the next layer's input.
-
-#### Visual summary
-
-<img width="2046" height="876" alt="Math summary 2" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
 
 
 ## Accelerator Accuracy
