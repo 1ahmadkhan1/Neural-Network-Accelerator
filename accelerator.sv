@@ -1,4 +1,4 @@
-module acc (
+module accelerator (
     input  logic        clk_clk,
     input  logic        reset_reset,
 
