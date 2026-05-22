@@ -1,4 +1,4 @@
-module acc (
+module accelerator (
     input  logic        clk_clk,
     input  logic        reset_reset,
 
@@ -96,10 +96,10 @@ module acc (
     localparam [4:0] done_out_st     = 5'b1_1011;
     localparam [4:0] wait_start_st   = 5'b1_1100;
 
+    logic [4:0] state = idle_st;
+
     assign s1_readdata = {31'b0, done}; // Return the done signal when the CPU reads from the accelerator's register interface
     assign done = state[4];             // The done_out_st is the only state with the MSB set, so we can use that bit to indicate when we're done
-
-    logic [4:0] state = idle_st;
 
     // Counters for iterating through input and weight matrices
     logic [31:0] output_address;
