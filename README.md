@@ -3,6 +3,7 @@
 ## Contents
 - [Objectives](#objectives)
 - [Model Training](#model-training)
+- [System Architecture](#system-architecture)
 - [Math Used During Inference](#math-used-during-inference)
 - [Accelerator Accuracy](#accelerator-accuracy)
 - [Accelerator FSM](#accelerator-fsm)
@@ -34,20 +35,39 @@ The output layer does **not** apply ReLU. Instead, the predicted digit is the in
 *Image from [3blue1brown](https://www.3blue1brown.com/?v=neural-networks). This is the same network shape used in this project.*
 
 
+## System Architecture
+
+This project is built as a small system-on-chip on the Cyclone V FPGA in the DE1-SoC board. The Nios II processor controls the inference flow in software, while the custom accelerator performs the repeated dense-layer multiply-accumulate work in hardware.
+
+<p align="center">
+<img width="1100" alt="System architecture diagram" src="./docs/system_architecture.svg" />
+</p>
+
+The design is connected through an Avalon-MM interconnect. This lets the Nios II processor, memory blocks, PIO peripherals, JTAG UART, and custom accelerator share one memory-mapped system.
+
+- The host computer programs and communicates with the board through the USB-Blaster and JTAG UART path.
+- The Nios II processor runs the inference software and configures the accelerator registers for each layer.
+- The input image, weights, and biases are stored in separate on-chip memories initialized from `.mif` files.
+- The accelerator is both an Avalon-MM slave and master: the CPU writes its control registers through the slave interface, and the accelerator reads/writes memory through its master interface.
+- The LEDs, switches, and seven-segment display are exposed through PIO blocks so the design can show results and basic board I/O behavior.
+
+At a high level, software starts one layer at a time. For each layer, it writes the input base address, weight base address, bias/output base address, layer sizes, and ReLU setting into the accelerator. The hardware then walks through memory, computes each output neuron, writes the result back to memory, and raises `done` for the processor.
+
+
 ## Math Used During Inference
 
 <img width="1925" height="1215" alt="image" src="https://github.com/user-attachments/assets/758b487d-4cdd-45be-a70b-739629a09912" />
 
 For an input image `x` with 784 normalized pixel values, the network computes:
 
-## Neural Network Forward Pass
+### Neural Network Forward Pass
 
 <p align="left" >
 <b> h<sup>(1)</sup> = ReLU(W<sub>1</sub>x + b<sub>1</sub>) </b>
 </p>
 
 <p align="center">
-where W<sub>1</sub> is 16 × 784 and b<sub>1</sub> is length 16.
+where W<sub>1</sub> is 16 x 784 and b<sub>1</sub> is length 16.
 </p>
 
 <p align="left">
@@ -55,7 +75,7 @@ where W<sub>1</sub> is 16 × 784 and b<sub>1</sub> is length 16.
 </p>
 
 <p align="center">
-where W<sub>2</sub> is 16 × 16 and b<sub>2</sub> is length 16.
+where W<sub>2</sub> is 16 x 16 and b<sub>2</sub> is length 16.
 </p>
 
 <p align="left">
@@ -63,7 +83,7 @@ where W<sub>2</sub> is 16 × 16 and b<sub>2</sub> is length 16.
 </p>
 
 <p align="center">
-where W<sub>3</sub> is 10 × 16 and b<sub>3</sub> is length 10.
+where W<sub>3</sub> is 10 x 16 and b<sub>3</sub> is length 10.
 </p>
 
 <p align="center">
