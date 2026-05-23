@@ -1,22 +1,73 @@
 # Deep Neural Network Accelerator on an FPGA
 
+A hardware/software neural-network inference project for the DE1-SoC board. The model is trained offline in Python, converted to signed Q8.8 fixed-point, and then run on a Nios II based FPGA system with a custom Avalon-MM accelerator for dense-layer computation.
+
+## Project Details
+
+| Area | Details |
+| --- | --- |
+| Platform | Cyclone V FPGA on the DE1-SoC board |
+| Processor | Nios II soft processor |
+| Accelerator | Custom SystemVerilog Avalon-MM slave/master module |
+| Network | MNIST MLP: `784 -> 16 -> 16 -> 10` |
+| Number format | Signed Q8.8 fixed-point |
+| Accuracy | `95.27%` on 10000 MNIST test images |
+| Main result | Fixed-point accelerator path is only `0.04` percentage points below the floating-point validation accuracy |
+
 ## Contents
 - [Objectives](#objectives)
-- [Model Training](#model-training)
+- [Key Files](#key-files)
 - [System Architecture](#system-architecture)
-- [Math Used During Inference](#math-used-during-inference)
+- [Model Training](#model-training)
+- [Fixed-Point Inference Math](#fixed-point-inference-math)
 - [Accelerator Accuracy](#accelerator-accuracy)
 - [Accelerator FSM](#accelerator-fsm)
-- [How the weights and biases were loaded onto memory](#how-the-weights-and-biases-were-loaded-onto-memory)
-- [Issues](#issues)
-
+- [Weight and Bias Memory Initialization](#weight-and-bias-memory-initialization)
+- [Verification](#verification)
+- [Challenges and Lessons Learned](#challenges-and-lessons-learned)
 
 ## Objectives
-- Train a compact neural network that classifies handwritten MNIST digits
-- Convert the trained floating-point weights and biases into signed Q8.8 fixed-point data for FPGA memory
-- Design a custom hardware accelerator that performs dense-layer multiply-accumulate and optional ReLU for Nios II inference
-- Run end-to-end inference on the FPGA-oriented datapath while keeping high classification accuracy
+- Train a compact neural network that can classify handwritten MNIST digits.
+- Convert the trained floating-point weights and biases into signed Q8.8 fixed-point values for FPGA memory.
+- Build a custom hardware accelerator for the dense-layer multiply-accumulate work used during forward propagation.
+- Integrate the accelerator into a Nios II system as a memory-mapped Avalon-MM peripheral.
+- Validate that the FPGA-oriented fixed-point datapath keeps high classification accuracy.
 
+## Key Files
+
+| Path | Purpose |
+| --- | --- |
+| [`accelerator.sv`](./accelerator.sv) | Custom accelerator RTL and FSM |
+| [`System_Accelerated/acc.sv`](./System_Accelerated/acc.sv) | Accelerator source used inside the accelerated Quartus system |
+| [`software/Accelerated_Inference/hello_world_small.c`](./software/Accelerated_Inference/hello_world_small.c) | Nios II software that configures and runs the accelerator |
+| [`training/training_dnn.py`](./training/training_dnn.py) | Python training script for the MNIST MLP |
+| [`training/convert_data_q88.py`](./training/convert_data_q88.py) | Converts trained parameters into signed Q8.8 `.mif` files |
+| [`weights_biases/`](./weights_biases) | FPGA memory initialization files for weights and biases |
+| [`testing/verify_inference.py`](./testing/verify_inference.py) | Fixed-point software reference for checking inference outputs |
+| [`testing/acc_fsm_tb.sv`](./testing/acc_fsm_tb.sv) | ModelSim FSM testbench for the accelerator |
+
+## System Architecture
+
+This project is built as a small system-on-chip on the Cyclone V FPGA in the DE1-SoC board. The Nios II processor controls the inference flow in software, while the custom accelerator performs the repeated dense-layer multiply-accumulate work in hardware.
+
+<p align="center">
+<img width="1100" alt="System architecture diagram" src="./data/system_architecture.svg" />
+</p>
+
+The design is connected through an Avalon-MM interconnect, which lets the Nios II processor, memory blocks, PIO peripherals, JTAG UART, and custom accelerator share one memory-mapped system.
+
+| Component | Role in the system |
+| --- | --- |
+| Host computer | Programs the board and communicates through the USB-Blaster/JTAG path |
+| Nios II processor | Runs the inference software and configures the accelerator for each layer |
+| Custom accelerator | Reads inputs/weights/biases, computes dense-layer outputs, and writes activations back to memory |
+| On-chip memories | Store the input image, weights, biases, hidden activations, and final logits |
+| JTAG UART | Provides debug/console communication with the host computer |
+| PIO blocks | Connect the design to LEDs, switches, and the seven-segment display |
+
+The accelerator is both an Avalon-MM slave and master. The CPU writes control registers through the slave interface, while the accelerator uses its master interface to read and write the memory blocks directly. This is the main hardware/software co-design point in the project: software decides *which layer* to run, and hardware performs the heavy dot-product work.
+
+At a high level, software starts one layer at a time. For each layer, it writes the input base address, weight base address, bias/output base address, layer sizes, and ReLU setting into the accelerator. The hardware then walks through memory, computes every output neuron, writes the result back to memory, and raises `done` for the processor.
 
 ## Model Training
 
@@ -28,108 +79,69 @@ The trained Multilayer Perceptron (MLP) has:
 - a second hidden layer of 16 neurons with ReLU
 - an output layer of 10 logits, one for each digit from 0 to 9
 
-The output layer does **not** apply ReLU. Instead, the predicted digit is the index of the largest output value.
+The output layer does **not** apply ReLU. The predicted digit is the index of the largest output value.
 
-<img width="1496" height="1346" alt="image" src="https://github.com/user-attachments/assets/eb38a49a-c6e2-4dcb-938b-f37e3e4b6557" />
+<img width="1496" height="1346" alt="Neural network diagram" src="https://github.com/user-attachments/assets/eb38a49a-c6e2-4dcb-938b-f37e3e4b6557" />
 
 *Image from [3blue1brown](https://www.3blue1brown.com/?v=neural-networks). This is the same network shape used in this project.*
 
-
-## System Architecture
-
-This project is built as a small system-on-chip on the Cyclone V FPGA in the DE1-SoC board. The Nios II processor controls the inference flow in software, while the custom accelerator performs the repeated dense-layer multiply-accumulate work in hardware.
-
-<p align="center">
-<img width="1100" alt="System architecture diagram" src="./docs/system_architecture.svg" />
-</p>
-
-The design is connected through an Avalon-MM interconnect. This lets the Nios II processor, memory blocks, PIO peripherals, JTAG UART, and custom accelerator share one memory-mapped system.
-
-- The host computer programs and communicates with the board through the USB-Blaster and JTAG UART path.
-- The Nios II processor runs the inference software and configures the accelerator registers for each layer.
-- The input image, weights, and biases are stored in separate on-chip memories initialized from `.mif` files.
-- The accelerator is both an Avalon-MM slave and master: the CPU writes its control registers through the slave interface, and the accelerator reads/writes memory through its master interface.
-- The LEDs, switches, and seven-segment display are exposed through PIO blocks so the design can show results and basic board I/O behavior.
-
-At a high level, software starts one layer at a time. For each layer, it writes the input base address, weight base address, bias/output base address, layer sizes, and ReLU setting into the accelerator. The hardware then walks through memory, computes each output neuron, writes the result back to memory, and raises `done` for the processor.
-
-
-## Math Used During Inference
-
-<img width="1925" height="1215" alt="image" src="https://github.com/user-attachments/assets/758b487d-4cdd-45be-a70b-739629a09912" />
+## Fixed-Point Inference Math
 
 For an input image `x` with 784 normalized pixel values, the network computes:
 
-### Neural Network Forward Pass
-
-<p align="left" >
-<b> h<sup>(1)</sup> = ReLU(W<sub>1</sub>x + b<sub>1</sub>) </b>
-</p>
-
-<p align="center">
-where W<sub>1</sub> is 16 x 784 and b<sub>1</sub> is length 16.
-</p>
-
-<p align="left">
-<b> h<sup>(2)</sup> = ReLU(W<sub>2</sub>h<sup>(1)</sup> + b<sub>2</sub>) </b>
-</p>
-
-<p align="center">
-where W<sub>2</sub> is 16 x 16 and b<sub>2</sub> is length 16.
-</p>
-
-<p align="left">
-<b> z = W<sub>3</sub>h<sup>(2)</sup> + b<sub>3</sub> </b>
-</p>
-
-<p align="center">
-where W<sub>3</sub> is 10 x 16 and b<sub>3</sub> is length 10.
-</p>
-
-<p align="center">
+```text
+h1 = ReLU(W1 x + b1)      W1: 16 x 784, b1: 16
+```
+```text
+h2 = ReLU(W2 h1 + b2)     W2: 16 x 16,  b2: 16
+```
+```text
+z  = W3 h2 + b3           W3: 10 x 16,  b3: 10
+```
+```text
 prediction = argmax(z)
-</p>
+```
 
-For one neuron, the accelerator is really computing the same dense-layer equation over and over:
+For one neuron, the accelerator computes the same dense-layer equation repeatedly:
 
 ```text
 a_i = b_i + sum(x_j * w_i,j)   for j = 0 to N - 1
 ```
 
-<img width="2046" height="876" alt="Math summary 2" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
-
 Then:
-- if the layer is a hidden layer, `ReLU(a_i) = max(0, a_i)` is applied
-- if the layer is the output layer, the value is left unchanged and treated as a logit
+- hidden layers apply `ReLU(a_i) = max(0, a_i)`
+- the output layer leaves the value unchanged and treats it as a logit
 
-### Fixed-point math used in hardware
+<img width="2046" height="876" alt="Dense layer math summary" src="https://github.com/user-attachments/assets/3eeb0753-8d90-4566-9ae1-c5d6b922d07c" />
 
-The FPGA does not store weights and activations as floating-point values. Everything is converted to **signed Q8.8 fixed-point**:
+### Q8.8 Fixed-Point Format
+
+The FPGA stores weights, biases, inputs, and activations as **signed Q8.8 fixed-point** values:
 
 ```text
-fixed_value = round(real_value * 2^8) = round(real_value * 256)
+fixed_value = round(real_value * 2^8)
 real_value  ~= fixed_value / 256
 ```
 
-This means:
-- 8 integer bits are used, including the sign bit
-- 8 fractional bits are used
-- each value is stored in 16 bits
-- the representable range is about `-128.0` to `+127.996`
+This gives:
+- 16-bit storage per value
+- 8 fractional bits of precision
+- a range of about `-128.0` to `+127.996`
+- simple integer multiply-accumulate hardware
 
-### What happens during one multiply-accumulate
+### Hardware Multiply-Accumulate Flow
 
 The accelerator works on one output neuron at a time.
 
-1. The bias starts the accumulator:
+1. Start the accumulator with the bias:
 
 ```text
 acc = bias << 8
 ```
 
-`bias` is Q8.8, so shifting left by 8 turns it into Q16.16.
+The bias is Q8.8, so shifting left by 8 converts it into Q16.16.
 
-2. For each input element:
+2. Accumulate every input-weight product:
 
 ```text
 acc = acc + (x * w)
@@ -137,7 +149,7 @@ acc = acc + (x * w)
 
 Since `x` and `w` are both Q8.8, their product is Q16.16, which matches the accumulator scale.
 
-3. After the full dot product is complete, the accumulator is rounded back to Q8.8:
+3. Round back to Q8.8:
 
 ```text
 if acc >= 0:
@@ -146,43 +158,36 @@ else:
     out = -(((-acc) + 128) >> 8)
 ```
 
-4. ReLU is optionally applied:
+4. Optionally apply ReLU:
 
 ```text
 if relu_enable and out < 0:
     out = 0
 ```
 
-5. The result is saturated so it still fits in signed 16-bit Q8.8:
+5. Saturate to the signed 16-bit Q8.8 range:
 
 ```text
 out = clamp(out, -32768, 32767)
 ```
 
-### Layer-by-layer flow in this design
-
-- Layer 1 computes h<sup>(1)</sup> from the 784 input pixels
-- Layer 2 computes h<sup>(2)</sup> from the 16 outputs of layer 1
-- Layer 3 computes z, 10 output logits from the 16 outputs of layer 2
-- The predicted digit is the index of the largest logit
-
 The software runs the accelerator once per layer. After each run, the new activations are written back into memory and reused as the next layer's input.
-
 
 ## Accelerator Accuracy
 
-Using the exported Q8.8 weights and biases together with the same fixed-point layer math used by the accelerator, the design correctly classified **9527 out of 10000** MNIST test images:
+Using the exported Q8.8 weights and biases together with the same fixed-point layer math used by the accelerator, the design correctly classified **9527 out of 10000** MNIST test images.
 
-```text
-Accuracy = 9527 / 10000 = 95.27%
-```
+| Datapath | Accuracy |
+| --- | --- |
+| Floating-point trained model validation accuracy | `95.31%` |
+| Q8.8 fixed-point accelerator path | `95.27%` |
+| Accuracy drop after fixed-point conversion | `0.04` percentage points |
 
-This means the fixed-point accelerator path preserves almost all of the trained model's performance. The floating-point training log reached **95.31%** validation accuracy, so the Q8.8 implementation is only **0.04 percentage points lower**.
-
+That result is the most important validation point: the hardware-friendly Q8.8 implementation preserves almost all of the trained model's accuracy.
 
 ## Accelerator FSM
 
-The custom accelerator is controlled by a finite-state machine (FSM) in [accelerator.sv](./accelerator.sv). Each accelerator run computes **one full dense layer**. Software provides:
+The custom accelerator is controlled by a finite-state machine in [`accelerator.sv`](./accelerator.sv). Each accelerator run computes **one full dense layer**. Software provides:
 
 - `start`
 - `input_base`
@@ -194,64 +199,84 @@ The custom accelerator is controlled by a finite-state machine (FSM) in [acceler
 
 The FSM then walks through the input vector, weight matrix, and bias vector to produce every output neuron.
 
-### Every state and what it does
+### Every State and What It Does
 
-| State | What it does |
-| --- | --- |
-| `idle_st` | Waits for `start = 1`. While idle, it clears counters, accumulator registers, and Avalon master control signals so a new layer can begin from a clean state. |
-| `outer_loop_st` | Controls the outer loop over output neurons. If `neuron_i == output_size`, the whole layer is finished. Otherwise, it starts a memory read for the current neuron's bias. |
-| `read_1_st` | Waits for the bias read to complete. When `acc_master_readdatavalid` arrives, it extracts the correct 16-bit bias, sign-extends it, and initializes `accumulation = bias << 8` so the accumulator is in Q16.16 format. It also stores the address that will later be used for writeback. |
-| `inner_loop_st` | Controls the inner loop over the current neuron's inputs. If `input_j == input_size`, the dot product for this neuron is finished. Otherwise, it starts a memory read for the next input value. |
-| `read_2_st` | Waits for the input read to complete. Once the input word returns, it captures `x` and immediately starts the read for the matching weight `w(neuron_i, input_j)`. |
-| `read_3_st` | Waits for the weight read to complete. Once the weight is available, it captures `w` and moves to the arithmetic state. |
-| `dot_st` | Performs one multiply-accumulate step: `accumulation <= accumulation + x * w`. Then it increments `input_j` and loops back to `inner_loop_st`. |
-| `done_inn_st` | Finishes the current neuron. It rounds the Q16.16 accumulator back to Q8.8, and if `relu_enable = 1`, it clamps negative values to zero. |
-| `saturate_st` | Saturates the rounded result into the legal Q8.8 range `[-32768, 32767]` and stores it in `neuron_activation`. It also prepares the address used for memory writeback. |
-| `write_st` | Packs the 16-bit activation into either the lower half or upper half of the 32-bit Avalon write bus and sets `byteenable` so only the correct halfword is written. |
-| `write_wait_st` | Waits until the write is accepted by memory. Then it deasserts `acc_master_write`, increments `neuron_i`, resets `input_j`, and returns to `outer_loop_st` for the next neuron. |
-| `done_out_st` | Indicates that all output neurons for the current layer are complete. This is the completion state reached after the outer loop finishes. |
-| `wait_start_st` | Holds the FSM in a safe completed state until software lowers `start` back to `0`. This prevents the accelerator from immediately retriggering on the same start pulse. |
+| Phase | State | What it does |
+| --- | --- | --- |
+| Setup | `idle_st` | Waits for `start = 1`. While idle, it clears counters, accumulator registers, and Avalon master control signals. |
+| Outer loop | `outer_loop_st` | Checks whether all output neurons are complete. If not, starts a memory read for the current neuron's bias. |
+| Bias read | `read_1_st` | Waits for the bias read, extracts the correct 16-bit halfword, sign-extends it, and initializes `accumulation = bias << 8`. |
+| Inner loop | `inner_loop_st` | Checks whether all inputs for the current neuron have been processed. If not, starts the next input read. |
+| Input read | `read_2_st` | Captures the input value `x` and starts the matching weight read. |
+| Weight read | `read_3_st` | Captures the weight value `w` and moves to the arithmetic state. |
+| MAC | `dot_st` | Performs `accumulation <= accumulation + x * w`, increments `input_j`, and loops back for the next input. |
+| Post-processing | `done_inn_st` | Rounds the Q16.16 accumulator back to Q8.8 and optionally applies ReLU. |
+| Post-processing | `saturate_st` | Saturates the result into `[-32768, 32767]` and prepares the writeback address. |
+| Writeback | `write_st` | Packs the 16-bit activation into the correct half of the 32-bit Avalon write bus. |
+| Writeback | `write_wait_st` | Waits for the memory write to complete, then advances to the next neuron. |
+| Done | `done_out_st` | Indicates that the full layer is complete. |
+| Done | `wait_start_st` | Waits for software to lower `start` back to `0` before returning to idle. |
 
-### FSM flow
-
-The control flow is:
+### FSM Flow
 
 <p align="center">
 <img width="894" height="1072" alt="Accelerator FSM" src="https://github.com/user-attachments/assets/65179474-a174-4489-9655-73c2b9fc7d9d" />
 </p>
 
-### Why the FSM is structured this way
+### Why the FSM Is Structured This Way
 
-- The accelerator reuses a single multiply-accumulate datapath instead of building many multipliers in parallel
-- Bias, input, and weight values are streamed from memory only when needed
-- The same FSM works for all three network layers because the CPU only changes the base addresses, sizes, and the relu_enable flag
-- Hidden layers run with ReLU enabled, and the final output layer runs with ReLU disabled
+- The accelerator reuses one multiply-accumulate datapath instead of building many multipliers in parallel.
+- Bias, input, and weight values are streamed from memory only when needed.
+- The same FSM works for all three network layers because software changes only the base addresses, sizes, and `relu_enable` flag.
+- Hidden layers run with ReLU enabled, and the final output layer runs with ReLU disabled.
 
+## Weight and Bias Memory Initialization
 
-## How the weights and biases were loaded onto memory
+After training, the learned weights and biases are stored as 32-bit floating-point values. Before loading them into FPGA memory, they are converted into **signed Q8.8 fixed-point** and written into `.mif` files.
 
-#### Q8.8 format
+<img width="1082" height="224" alt="Q8.8 format diagram" src="https://github.com/user-attachments/assets/f41e6e0b-32ff-452d-b36b-f30acbcec0ef" />
 
-After training, the learned weights and biases were originally stored as 32-bit floating-point values. Before loading them into FPGA memory, they were converted into **signed Q8.8 fixed-point format**.
+This format is useful for the FPGA because it gives:
+- enough precision and dynamic range for this network
+- compact 16-bit memory storage
+- simple integer arithmetic
+- easier initialization of Quartus on-chip memories
 
-<img width="1082" height="224" alt="image" src="https://github.com/user-attachments/assets/f41e6e0b-32ff-452d-b36b-f30acbcec0ef" />
-<br>
+### Conversion Flow
 
-This format gives:
-- enough precision and dynamic range for weights, biases, and neuron activations
-- simple hardware implementation
-- compact 16-bit storage
-- faster multiply-and-accumulate operations
-- easier loading into FPGA memory using `.mif` files
+<img width="2459" height="240" alt="Weight and bias conversion flow" src="https://github.com/user-attachments/assets/3ae24dc5-9ecf-48b5-9e53-abec264bd8e2" />
 
+The memory layout is layer-specific:
 
-#### The complete conversion process
+| Memory | Contents |
+| --- | --- |
+| `input_layer` | 784 Q8.8 input pixels |
+| `w1`, `w2`, `w3` | Q8.8 weight matrices |
+| `b1`, `b2`, `b3` | Initial biases, then layer outputs after each accelerator run |
 
-<img width="2459" height="240" alt="image" src="https://github.com/user-attachments/assets/3ae24dc5-9ecf-48b5-9e53-abec264bd8e2" />
+The bias memories are intentionally reused as output buffers. For example, layer 1 reads from `B1` as the bias vector and then writes the hidden-layer activation values back into `B1`, so layer 2 can use `B1` as its input.
 
+## Verification
 
-## Issues
+The project was checked at multiple levels:
 
-- Originally, the `Q2.14` representation did not provide a sufficient range for hidden-layer activations. Many values were clipped, which reduced the model's accuracy to around 45%. The project was then rescaled to Q8.8 after measuring activation ranges across the dataset and adding extra margin.
-- The generated `.hex` files were initially written in Intel HEX format, which is byte-addressed and includes record metadata such as byte count, address, record type, and checksum. Quartus on-chip memories were configured as 16-bit word-addressed memories, so the files were interpreted incorrectly and caused wrapping, truncation, and corrupted initialized contents.
-- During debugging, the Python `verify_inference.py` script and the Nios II inference code produced different logits for the same input image. This showed that the problem was not only the neural network math, but also how the fixed-point data was being loaded into FPGA memory.
+| Check | What it validates |
+| --- | --- |
+| Python fixed-point inference | Confirms that Q8.8 arithmetic matches the intended neural-network math |
+| MNIST test-set accuracy | Confirms the full fixed-point inference path reaches `95.27%` accuracy |
+| Nios II inference code | Confirms software can configure the accelerator one layer at a time |
+| ModelSim FSM testbench | Exercises the accelerator FSM, including ReLU, saturation, writeback, and `done` behavior |
+
+The FSM testbench generates a waveform file for debugging the accelerator control flow:
+
+```text
+testing/acc_fsm_tb.vcd
+```
+
+## Challenges
+
+- **Choosing the fixed-point format:** The first Q2.14 representation did not provide enough range for hidden-layer activations, so many values clipped and accuracy dropped to around 45%. Moving to Q8.8 gave the model enough dynamic range while still keeping 16-bit storage.
+- **Memory file format mismatch:** The generated `.hex` files were initially byte-addressed Intel HEX files, but the Quartus memories were configured as 16-bit word-addressed memories. Switching to the correct `.mif` layout fixed corrupted memory contents.
+- **Software/hardware debugging:** Python verification and Nios II inference originally produced different logits for the same image. That forced the debugging to include both the neural-network math and the way fixed-point data was loaded into FPGA memory.
+- **Bias memory reuse:** The accelerator writes each layer output back into that layer's bias memory. This saves extra memory blocks, but it also means repeated inference needs the memories to be reloaded or carefully managed.
+- **Sequential MAC design:** The accelerator uses one multiply-accumulate datapath and iterates through the inputs. This keeps the hardware simple and reusable across layers, but it leaves room for future speedups through parallel MAC lanes or deeper pipelining.
