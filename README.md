@@ -267,11 +267,6 @@ The project was checked at multiple levels:
 | Nios II inference code | Confirms software can configure the accelerator one layer at a time |
 | ModelSim FSM testbench | Exercises the accelerator FSM, including ReLU, saturation, writeback, and `done` behavior |
 
-The FSM testbench generates a waveform file for debugging the accelerator control flow:
-
-```text
-testing/acc_fsm_tb.vcd
-```
 
 ## Challenges
 
