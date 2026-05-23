@@ -24,7 +24,7 @@ A hardware/software neural-network inference project for the DE1-SoC board. The 
 - [Accelerator FSM](#accelerator-fsm)
 - [Weight and Bias Memory Initialization](#weight-and-bias-memory-initialization)
 - [Verification](#verification)
-- [Challenges and Lessons Learned](#challenges-and-lessons-learned)
+- [Challenges](#challenges)
 
 ## Objectives
 - Train a compact neural network that can classify handwritten MNIST digits.
@@ -38,8 +38,7 @@ A hardware/software neural-network inference project for the DE1-SoC board. The 
 | Path | Purpose |
 | --- | --- |
 | [`accelerator.sv`](./accelerator.sv) | Custom accelerator RTL and FSM |
-| [`System_Accelerated/acc.sv`](./System_Accelerated/acc.sv) | Accelerator source used inside the accelerated Quartus system |
-| [`software/Accelerated_Inference/hello_world_small.c`](./software/Accelerated_Inference/hello_world_small.c) | Nios II software that configures and runs the accelerator |
+| [`accelerator_cpu.c`](./accelerator_cpu.c) | Nios II software that configures and runs the accelerator |
 | [`training/training_dnn.py`](./training/training_dnn.py) | Python training script for the MNIST MLP |
 | [`training/convert_data_q88.py`](./training/convert_data_q88.py) | Converts trained parameters into signed Q8.8 `.mif` files |
 | [`weights_biases/`](./weights_biases) | FPGA memory initialization files for weights and biases |
