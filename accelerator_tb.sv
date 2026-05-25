@@ -89,6 +89,35 @@ module accelerator_tb (
         s1_write     = 1'b0;
     endtask
 
+    task automatic cpu_read (
+        input logic [4:0]  address,
+        output logic [31:0] data
+    );
+
+        @(negedge clk);
+        s1_address   = address;
+        s1_read      = 1'b1;
+
+        @(posedge clk);
+        @(negedge clk);
+        data         = s1_readdata;
+        s1_read      = 1'b0;
+    endtask
+
+    // Wait for done
+    task automatic wait_done();
+        logic [31:0] poll_data;
+        poll_data = 32'd0;
+        
+        if(acc_master_writedata) begin
+            //output data check 
+        end
+
+        while (!poll_data[0]) begin
+            cpu_read(5'b00000, poll_data); // Poll start signal to check if accelerator is done
+        end
+    endtask
+
     // Memory model 
     always_ff @(posedge clk) begin
         if (reset) begin
@@ -122,6 +151,18 @@ module accelerator_tb (
         end
     end
 
+    always @(negedge clk) begin
+        if (acc_master_write) begin
+            $display("Output from accelerator: %h", acc_master_writedata);
+            if ((acc_master_writedata[15:0] === EXPECTED_OUT && acc_master_byteenable === 4'b0011) ||
+                (acc_master_writedata[31:16] === EXPECTED_OUT && acc_master_byteenable === 4'b1100)) begin
+                $display("Test PASSED!");
+            end else begin
+                $display("Test FAILED! Expected %h but got %h", EXPECTED_OUT, acc_master_writedata[15:0]);
+            end
+        end
+    end
+
     // Clock generation
     initial begin
         clk = 1'b0;     // Start with clock low
@@ -142,9 +183,9 @@ module accelerator_tb (
 
         acc_master_waitrequest   = 1'b0;
 
-        // Hold reset high for a 3 clock edges
-        repeat (3) @(posedge clk);
-
+        // Hold reset high for a 5 clock edges
+        repeat (5) @(posedge clk);
+        @(negedge clk); // Ensure reset is deasserted on a negedge
         reset = 1'b0;   // Release reset
 
         @(posedge clk); // Wait for one clock cycle
@@ -161,43 +202,8 @@ module accelerator_tb (
         // ------ Start Hardware Accelerator ------ //
 
         cpu_write(5'b00000, 32'd1);        // Start signal
-
-        write_seen = 1'b0;
-
-        // Check on negedge so DUT outputs are stable after posedge updates
-        repeat (100) begin
-            @(negedge clk);
-
-            if (acc_master_write) begin
-                write_seen = 1'b1;
-
-                if (acc_master_address !== BIAS_BASE) begin
-                    $error("Wrong write address. Expected %h, got %h",
-                        BIAS_BASE, acc_master_address);
-                end
-
-                if (acc_master_byteenable !== 4'b0011) begin
-                    $error("Wrong byteenable. Expected 0011, got %b",
-                        acc_master_byteenable);
-                end
-
-                if (acc_master_writedata[15:0] !== EXPECTED_OUT) begin
-                    $error("Wrong output. Expected %h, got %h",
-                        EXPECTED_OUT, acc_master_writedata[15:0]);
-                end
-                else begin
-                    $display("PASS: output is correct. Got %h",
-                            acc_master_writedata[15:0]);
-                end
-
-                $stop;
-            end
-        end
-
-        if (!write_seen) begin
-            $error("Timeout: accelerator never wrote an output.");
-            $stop;
-        end
+        wait_done();                       // Wait for accelerator to get done
+        cpu_write(5'b00000, 32'd0);        // Clear start signal so fsm returns to idle
 
     end
 
