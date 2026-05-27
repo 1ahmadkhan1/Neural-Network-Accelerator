@@ -6,23 +6,10 @@ module accelerator_tb (
     logic        reset;
 
     // CPU register interface
-    logic [4:0]  s1_address;
-    logic        s1_read;
-    logic        s1_write;
-    logic [31:0] s1_writedata;
-    logic [3:0]  s1_byteenable;
-    logic [31:0] s1_readdata;
-    logic        s1_waitrequest;
+    avalon_mm_slave_if s1_if(clk, reset);
 
     // Memory master interface
-    logic [31:0] acc_master_readdata;
-    logic        acc_master_waitrequest;
-    logic        acc_master_readdatavalid;
-    logic [31:0] acc_master_address;
-    logic        acc_master_read;
-    logic        acc_master_write;
-    logic [31:0] acc_master_writedata;
-    logic [3:0]  acc_master_byteenable;
+    avalon_mm_master_if acc_master_if(clk, reset);
 
     logic        write_seen;
 
@@ -57,22 +44,22 @@ module accelerator_tb (
         .clk_clk(clk),
         .reset_reset(reset),
 
-        .s1_address(s1_address),
-        .s1_read(s1_read),
-        .s1_write(s1_write),
-        .s1_writedata(s1_writedata),
-        .s1_byteenable(s1_byteenable),
-        .s1_readdata(s1_readdata),
-        .s1_waitrequest(s1_waitrequest),
+        .s1_address(s1_if.address),
+        .s1_read(s1_if.read),
+        .s1_write(s1_if.write),
+        .s1_writedata(s1_if.writedata),
+        .s1_byteenable(s1_if.byteenable),
+        .s1_readdata(s1_if.readdata),
+        .s1_waitrequest(s1_if.waitrequest),
 
-        .acc_master_readdata(acc_master_readdata),
-        .acc_master_waitrequest(acc_master_waitrequest),
-        .acc_master_readdatavalid(acc_master_readdatavalid),
-        .acc_master_address(acc_master_address),
-        .acc_master_read(acc_master_read),
-        .acc_master_write(acc_master_write),
-        .acc_master_writedata(acc_master_writedata),
-        .acc_master_byteenable(acc_master_byteenable)
+        .acc_master_readdata(acc_master_if.readdata),
+        .acc_master_waitrequest(acc_master_if.waitrequest),
+        .acc_master_readdatavalid(acc_master_if.readdatavalid),
+        .acc_master_address(acc_master_if.address),
+        .acc_master_read(acc_master_if.read),
+        .acc_master_write(acc_master_if.write),
+        .acc_master_writedata(acc_master_if.writedata),
+        .acc_master_byteenable(acc_master_if.byteenable)
     );
     
 
@@ -260,11 +247,9 @@ module accelerator_tb (
         cpu_write(REG_START, 32'd0);
         #100;
         $stop;
-        
+
     end
 
-
-
-
-
 endmodule
+
+
