@@ -11,8 +11,6 @@ module accelerator_tb (
     // Memory master interface
     avalon_mm_master_if acc_master_if(clk, reset);
 
-    logic        write_seen;
-
     // Memory map 
     localparam logic [31:0] INPUT_BASE   = 32'h0000_0000;
     localparam logic [31:0] WEIGHTS_BASE = 32'h0000_0100;
@@ -70,13 +68,13 @@ module accelerator_tb (
     );
 
         @(negedge clk);
-        s1_address   = address;
-        s1_write     = 1'b1;
-        s1_writedata = data;
+        s1_if.address   = address;
+        s1_if.write     = 1'b1;
+        s1_if.writedata = data;
 
         @(posedge clk);
         @(negedge clk);
-        s1_write     = 1'b0;
+        s1_if.write     = 1'b0;
     endtask
 
     task automatic cpu_read (
@@ -85,13 +83,13 @@ module accelerator_tb (
     );
 
         @(negedge clk);
-        s1_address   = address;
-        s1_read      = 1'b1;
+        s1_if.address   = address;
+        s1_if.read      = 1'b1;
 
         @(posedge clk);
         @(negedge clk);
-        data         = s1_readdata;
-        s1_read      = 1'b0;
+        data         = s1_if.readdata;
+        s1_if.read      = 1'b0;
     endtask
 
     function automatic logic signed [15:0] expected_neuron(
@@ -138,21 +136,21 @@ module accelerator_tb (
 
     always_ff @(posedge clk) begin
         if (reset) begin
-            acc_master_readdata      <= 32'd0;
-            acc_master_readdatavalid <= 1'b0;
+            acc_master_if.readdata      <= 32'd0;
+            acc_master_if.readdatavalid <= 1'b0;
         end
         else begin
             // Default value for memory read
-            acc_master_readdatavalid <= 1'b0;
+            acc_master_if.readdatavalid <= 1'b0;
 
-            if (acc_master_read) begin
+            if (acc_master_if.read) begin
                 // Read data reads 32 bits (4 bytes) from memory, so we need to concatenate 4 bytes together
-                automatic logic [31:0] address = {acc_master_address[31:2], 2'b00}; // Align address to 4 bytes
+                automatic logic [31:0] address = {acc_master_if.address[31:2], 2'b00}; // Align address to 4 bytes
                 // Aside: This made me realize the accelerator could be optimized if we saved the 32 bit input and used it in the next cycle.
 
-                acc_master_readdata <= {memory[address + 32'd3], memory[address + 32'd2], 
+                acc_master_if.readdata <= {memory[address + 32'd3], memory[address + 32'd2], 
                                         memory[address + 32'd1], memory[address]}; // Little-endian
-                acc_master_readdatavalid <= 1'b1;
+                acc_master_if.readdatavalid <= 1'b1;
             end
         end
     end
@@ -160,16 +158,16 @@ module accelerator_tb (
     int write_count = 0;
 
     always @(negedge clk) begin
-        if (acc_master_write) begin
+        if (acc_master_if.write) begin
             logic signed [15:0] expected;
             logic signed [15:0] actual;
 
             expected = (write_count == 0) ? expected_0 : expected_1;
 
-            if (acc_master_byteenable === 4'b0011)
-                actual = acc_master_writedata[15:0];
+            if (acc_master_if.byteenable === 4'b0011)
+                actual = acc_master_if.writedata[15:0];
             else
-                actual = acc_master_writedata[31:16];
+                actual = acc_master_if.writedata[31:16];
 
             if (actual === expected)
                 $display("PASS neuron %0d: got 0x%04h", write_count, actual);
@@ -216,13 +214,13 @@ module accelerator_tb (
         reset = 1'b1;
 
         // Initialize inputs
-        s1_address      = 5'b0;
-        s1_read         = 1'b0;
-        s1_write        = 1'b0;
-        s1_writedata    = 32'b0;
-        s1_byteenable   = 4'b1111;
+        s1_if.address      = 5'b0;
+        s1_if.read         = 1'b0;
+        s1_if.write        = 1'b0;
+        s1_if.writedata    = 32'b0;
+        s1_if.byteenable   = 4'b1111;
 
-        acc_master_waitrequest   = 1'b0;
+        acc_master_if.waitrequest   = 1'b0;
 
         // Hold reset high for a 5 clock edges
         repeat (5) @(posedge clk);
