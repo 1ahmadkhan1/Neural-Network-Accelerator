@@ -40,20 +40,16 @@ module accelerator_tb (
     localparam logic [4:0] REG_OUTPUT_SIZE  = 5'b00101; // number of output neurons
     localparam logic [4:0] REG_RELU_ENABLE  = 5'b00110; // ReLU enable
 
+    localparam logic signed [15:0] expected_0 = expected_neuron(
+        '{16'sh0200, 16'sh0300},    // inputs:  [2.0, 3.0]
+        '{16'sh0400, 16'sh0500},    // weights: [4.0, 5.0]
+        16'sh0100, 2, 1'b0          // bias=1.0, size=2, no ReLU
+    );
 
-    // Q8.8 values
-    localparam logic [15:0] Q_1 = 16'h0100; // 1.0
-    localparam logic [15:0] Q_2 = 16'h0200; // 2.0
-    localparam logic [15:0] Q_3 = 16'h0300; // 3.0
-    localparam logic [15:0] Q_4 = 16'h0400; // 4.0
-    localparam logic [15:0] Q_5 = 16'h0500; // 5.0
-
-    localparam logic [15:0] expected = expected_neuron(
-        '{Q_2, Q_3}, 
-        '{Q_4, Q_5}, 
-        Q_1, 
-        2, 
-        1'b0
+    localparam logic signed [15:0] expected_1 = expected_neuron(
+        '{16'sh0200, 16'sh0300},    // inputs:  [2.0, 3.0]
+        '{16'sh0100, 16'sh0300},    // weights: [1.0, 3.0]
+        16'sh0200, 2, 1'b0          // bias=2.0, size=2, no ReLU
     );
 
     // Instantiate the accelerator
@@ -174,15 +170,27 @@ module accelerator_tb (
         end
     end
 
+    int write_count = 0;
+
     always @(negedge clk) begin
         if (acc_master_write) begin
-            $display("Output from accelerator: %h", acc_master_writedata);
-            if ((acc_master_writedata[15:0] === expected && acc_master_byteenable === 4'b0011) ||
-                (acc_master_writedata[31:16] === expected && acc_master_byteenable === 4'b1100)) begin
-                $display("Test PASSED!");
-            end else begin
-                $display("Test FAILED! Expected %h but got %h", expected, acc_master_writedata[15:0]);
-            end
+            logic signed [15:0] expected;
+            logic signed [15:0] actual;
+
+            expected = (write_count == 0) ? expected_0 : expected_1;
+
+            if (acc_master_byteenable === 4'b0011)
+                actual = acc_master_writedata[15:0];
+            else
+                actual = acc_master_writedata[31:16];
+
+            if (actual === expected)
+                $display("PASS neuron %0d: got 0x%04h", write_count, actual);
+            else
+                $error("FAIL neuron %0d: expected 0x%04h, got 0x%04h",
+                    write_count, expected, actual);
+
+            write_count++;
         end
     end
 
@@ -195,40 +203,26 @@ module accelerator_tb (
     end
 
     initial begin
-        // Zero out memory
         for (int i = 0; i < 4096; i++)
             memory[i] = 8'h00;
 
-        // input[0] = 2.0 = 0x0200 at INPUT_BASE
-        memory[INPUT_BASE + 0] = 8'h00;
-        memory[INPUT_BASE + 1] = 8'h02;
+        // Inputs: [2.0, 3.0] shared by both neurons
+        memory[INPUT_BASE + 0] = 8'h00;  memory[INPUT_BASE + 1] = 8'h02;
+        memory[INPUT_BASE + 2] = 8'h00;  memory[INPUT_BASE + 3] = 8'h03;
 
-        $display("Input[0] in memory: %h%h", memory[INPUT_BASE + 1], memory[INPUT_BASE + 0]);
+        // Neuron 0 weights: [4.0, 5.0]
+        memory[WEIGHTS_BASE + 0] = 8'h00;  memory[WEIGHTS_BASE + 1] = 8'h04;
+        memory[WEIGHTS_BASE + 2] = 8'h00;  memory[WEIGHTS_BASE + 3] = 8'h05;
 
-        // input[1] = 3.0 = 0x0300 at INPUT_BASE + 2
-        memory[INPUT_BASE + 2] = 8'h00;
-        memory[INPUT_BASE + 3] = 8'h03;
+        // Neuron 1 weights: [1.0, 3.0]
+        memory[WEIGHTS_BASE + 4] = 8'h00;  memory[WEIGHTS_BASE + 5] = 8'h01;
+        memory[WEIGHTS_BASE + 6] = 8'h00;  memory[WEIGHTS_BASE + 7] = 8'h03;
 
-        $display("Input[1] in memory: %h%h", memory[INPUT_BASE + 3], memory[INPUT_BASE + 2]);
+        // Neuron 0 bias: 1.0
+        memory[BIAS_BASE + 0] = 8'h00;  memory[BIAS_BASE + 1] = 8'h01;
 
-        // weight[0] = 4.0 = 0x0400 at WEIGHTS_BASE
-        memory[WEIGHTS_BASE + 0] = 8'h00;
-        memory[WEIGHTS_BASE + 1] = 8'h04;
-
-        $display("Weight[0] in memory: %h%h", memory[WEIGHTS_BASE + 1], memory[WEIGHTS_BASE + 0]);
-
-        // weight[1] = 5.0 = 0x0500 at WEIGHTS_BASE + 2
-        memory[WEIGHTS_BASE + 2] = 8'h00;
-        memory[WEIGHTS_BASE + 3] = 8'h05;
-
-        $display("Weight[1] in memory: %h%h", memory[WEIGHTS_BASE + 3], memory[WEIGHTS_BASE + 2]);
-
-        // bias[0] = 1.0 = 0x0100 at BIAS_BASE
-        memory[BIAS_BASE + 0] = 8'h00;
-        memory[BIAS_BASE + 1] = 8'h01;
-
-        $display("Bias[0] in memory: %h%h", memory[BIAS_BASE + 1], memory[BIAS_BASE + 0]);
-        
+        // Neuron 1 bias: 2.0
+        memory[BIAS_BASE + 2] = 8'h00;  memory[BIAS_BASE + 3] = 8'h02;
     end
 
     initial begin
@@ -256,15 +250,17 @@ module accelerator_tb (
         cpu_write(REG_WEIGHTS_BASE, WEIGHTS_BASE); // Base address of weight matrix
         cpu_write(REG_BIAS_BASE, BIAS_BASE);       // Base address of bias vector
         cpu_write(REG_INPUT_SIZE, 32'd2);          // Number of inputs per neuron
-        cpu_write(REG_OUTPUT_SIZE, 32'd1);         // Number of output neurons
+        cpu_write(REG_OUTPUT_SIZE, 32'd2);         // Number of output neurons
         cpu_write(REG_RELU_ENABLE, 32'd0);         // ReLU disable
 
         // ------ Start Hardware Accelerator ------ //
 
         cpu_write(REG_START, 32'd1);        // Start signal
         wait_done();                        // Wait for accelerator to get done
-        cpu_write(REG_START, 32'd0);        // Clear start signal so fsm returns to idle
-
+        cpu_write(REG_START, 32'd0);
+        #100;
+        $stop;
+        
     end
 
 
