@@ -66,6 +66,8 @@ The design is connected through an Avalon-MM interconnect, which lets the Nios I
 
 The accelerator is both an Avalon-MM slave and master. The CPU writes control registers through the slave interface, while the accelerator uses its master interface to read and write the memory blocks directly. This is the main hardware/software co-design point in the project: software decides *which layer* to run, and hardware performs the heavy dot-product work.
 
+<img width="1210" height="859" alt="image" src="https://github.com/user-attachments/assets/ec6c983e-c146-4921-a804-467a071291ff" />
+
 At a high level, software starts one layer at a time. For each layer, it writes the input base address, weight base address, bias/output base address, layer sizes, and ReLU setting into the accelerator. The hardware then walks through memory, computes every output neuron, writes the result back to memory, and raises `done` for the processor.
 
 ## Model Training
