@@ -177,7 +177,7 @@ module accelerator (
 
                 read_1_st: begin
                                         
-                    if (acc_master_waitrequest) begin
+                    if (acc_master_read && acc_master_waitrequest) begin
                         acc_master_read <= 1'b1;   // keep request alive
                     end else begin
                         acc_master_read <= 1'b0;   // request accepted, now wait for data
@@ -212,7 +212,7 @@ module accelerator (
 
                 read_2_st: begin
                                         
-                    if (acc_master_waitrequest) begin
+                    if (acc_master_read && acc_master_waitrequest) begin
                         acc_master_read <= 1'b1;   // keep request alive
                     end else begin
                         acc_master_read <= 1'b0;   // request accepted, now wait for data
@@ -236,7 +236,7 @@ module accelerator (
 
                 read_3_st: begin
 
-                    if (acc_master_waitrequest) begin
+                    if (acc_master_read && acc_master_waitrequest) begin
                         acc_master_read <= 1'b1;   // keep request alive
                     end else begin
                         acc_master_read <= 1'b0;   // request accepted, now wait for data
